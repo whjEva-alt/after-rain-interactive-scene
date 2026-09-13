@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101914">
+  <meta name="description" content="雨停之前：一个支持文字、语音、角色表演与可打断响应的实时互动场景。">
+  <meta property="og:title" content="雨停之前 | 实时互动场景">
+  <meta property="og:description" content="在即将打烊的咖啡馆，与 Mira 完成一段雨夜对话。">
+  <meta property="og:image" content="assets/rain-cafe-v1.png">
+  <title>雨停之前 | After Rain</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="assets/lucide.min.js"></script>
+</head>
+<body>
+  <main class="experience" id="experience" data-state="idle" data-emotion="guarded" data-camera="steady">
+    <section class="scene" aria-label="暴雨后的咖啡馆">
+      <img class="scene-image" src="assets/rain-cafe-v1.png" alt="雨夜里即将打烊的咖啡馆">
+      <div class="window-rain" aria-hidden="true"></div>
+      <div class="scene-light" aria-hidden="true"></div>
+      <div class="character-wrap" aria-hidden="true">
+        <div class="character" id="character"></div>
+        <div class="character-shadow"></div>
+      </div>
+      <div class="focus-ring" aria-hidden="true"><span></span><span></span></div>
+      <div class="flash" id="flash" aria-hidden="true"></div>
+    </section>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">AR</span>
+        <span><strong>雨停之前</strong><small>AFTER RAIN</small></span>
+      </div>
+      <div class="top-actions">
+        <span class="connection" id="connection"><i></i><span>现场在线</span></span>
+        <span class="mode-tag" id="modeTag">MOCK</span>
+        <button class="icon-btn" id="soundButton" type="button" aria-label="关闭声音" title="声音">
+          <i data-lucide="volume-2"></i>
+        </button>
+        <button class="icon-btn" id="logButton" type="button" aria-label="打开事件记录" title="事件记录">
+          <i data-lucide="activity"></i>
+        </button>
+      </div>
+    </header>
+
+    <aside class="story-progress" aria-label="场景进度">
+      <span class="chapter">场景 01</span>
+      <div class="progress-line"><i class="active"></i><i></i><i></i></div>
+      <p id="sceneBeat">打烊前的最后十分钟</p>
+      <time>21:50</time>
+    </aside>
+
+    <section class="presence" aria-live="polite">
+      <span class="state-orbit"><i></i></span>
+      <div>
+        <strong id="stateLabel">Mira 正在等你</strong>
+        <span id="emotionLabel">克制</span>
+      </div>
+    </section>
+
+    <section class="subtitle" id="subtitle" aria-live="polite" aria-atomic="true">
+      <div class="speaker-row">
+        <span>MIRA</span>
+        <div class="voice-bars" id="voiceBars" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <p id="subtitleText">外面的雨小了些。你也是来躲雨，还是在找人？</p>
+      <button class="interrupt" id="interruptButton" type="button" hidden>
+        <i data-lucide="square"></i><span>打断</span>
+      </button>
+    </section>
+
+    <section class="photo-event" id="photoEvent" aria-hidden="true">
+      <div class="polaroid">
+        <div class="photo-crop"></div>
+        <p>21:47 · 同一扇窗</p>
+      </div>
+      <span>从相机包里滑出一张照片</span>
+    </section>
+
+    <section class="interaction" aria-label="与 Mira 互动">
+      <div class="choices" id="choices" aria-label="对话选择">
+        <button type="button" data-message="你在等谁？">你在等谁？</button>
+        <button type="button" data-message="你相机里的照片是谁拍的？">问那台相机</button>
+        <button type="button" data-message="店要关门了，一起走吧。">陪她离开</button>
+      </div>
+      <form class="composer" id="composer">
+        <button class="icon-btn mic" id="micButton" type="button" aria-label="开始语音输入" title="语音输入">
+          <i data-lucide="mic"></i>
+        </button>
+        <label>
+          <span class="sr-only">对 Mira 说</span>
+          <input id="messageInput" maxlength="500" autocomplete="off" placeholder="对 Mira 说……">
+        </label>
+        <button class="icon-btn send" type="submit" aria-label="发送" title="发送">
+          <i data-lucide="arrow-up"></i>
+        </button>
+      </form>
+      <div class="input-meta">
+        <span id="inputHint">雨声掩住了街口的脚步</span>
+        <button type="button" id="replayButton"><i data-lucide="rotate-ccw"></i><span>重新开始</span></button>
+      </div>
+    </section>
+
+    <aside class="diagnostics" id="diagnostics" aria-hidden="true">
+      <header>
+        <div><span>RUNTIME</span><h2>现场记录</h2></div>
+        <button class="icon-btn" id="closeLogButton" type="button" aria-label="关闭事件记录"><i data-lucide="x"></i></button>
+      </header>
+      <dl class="runtime-grid">
+        <div><dt>轮次</dt><dd id="turnMetric">0</dd></div>
+        <div><dt>首包</dt><dd id="latencyMetric">--</dd></div>
+        <div><dt>任务</dt><dd id="taskMetric">IDLE</dd></div>
+      </dl>
+      <div class="event-log" id="eventLog" aria-live="polite"></div>
+      <div class="diagnostic-actions">
+        <button type="button" id="demoInterruptButton"><i data-lucide="audio-lines"></i><span>模拟语音打断</span></button>
+        <button type="button" id="failureButton"><i data-lucide="wifi-off"></i><span>模拟服务断线</span></button>
+      </div>
+    </aside>
+
+    <div class="error-banner" id="errorBanner" role="alert" hidden>
+      <div><strong>场景暂时失去连接</strong><span>雨声还在，刚才的话没有丢失。</span></div>
+      <button type="button" id="retryButton">重试</button>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
