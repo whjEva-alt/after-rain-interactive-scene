@@ -19,6 +19,15 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parent
+BRANCHES = {
+    "opening",
+    "first-contact",
+    "name-withheld",
+    "photo-revealed",
+    "truth-shared",
+    "leave-together",
+    "stay",
+}
 
 
 @dataclass(frozen=True)
@@ -48,8 +57,66 @@ class SceneReply:
 class MockSceneModel:
     """Deterministic scene director used when no external model is configured."""
 
-    def respond(self, message: str, turn: int) -> SceneReply:
+    def respond(self, message: str, turn: int, branch: str = "opening") -> SceneReply:
         normalized = re.sub(r"\s+", "", message.lower())
+
+        if branch == "leave-together":
+            return SceneReply(
+                text="门铃在身后响了一声。我们没有回头。沿着照片上的街口走，雨水正把旧脚印一点点照亮。",
+                emotion="relieved",
+                gesture="shoulders-release",
+                camera="warm-close",
+                effect="rain-ease",
+                branch="leave-together",
+            )
+
+        if branch == "truth-shared" and any(
+            word in normalized for word in ("陪你", "一起", "去找", "离开")
+        ):
+            return SceneReply(
+                text="好。我们从后门走，先去照片里的街口。谢谢你没有把这当成一个故事，而是当成一个人还在等另一个人。",
+                emotion="relieved",
+                gesture="shoulders-release",
+                camera="warm-close",
+                effect="rain-ease",
+                branch="leave-together",
+            )
+
+        if branch == "name-withheld" and any(
+            word in normalized for word in ("为什么", "这里", "咖啡馆")
+        ):
+            return SceneReply(
+                text="因为三年前我们第一次见面就在这扇窗边。她说，如果有一天走散了，就回到最初有人记得我们的地方。",
+                emotion="guarded",
+                gesture="window-glance",
+                camera="window-drift",
+                effect="rain-rise",
+                branch="name-withheld",
+            )
+
+        if branch == "photo-revealed" and any(
+            word in normalized for word in ("她是谁", "倒影", "为什么", "真相")
+        ):
+            return SceneReply(
+                text="倒影里的人是我姐姐。三年前她失踪前，最后一张照片也是在这扇窗边。今晚有人把新的照片送回来，我才知道她可能一直在找我。",
+                emotion="relieved",
+                gesture="shoulders-release",
+                camera="warm-close",
+                effect="rain-ease",
+                branch="truth-shared",
+            )
+
+        if branch == "photo-revealed" and any(
+            word in normalized for word in ("谁放", "从哪", "哪里来")
+        ):
+            return SceneReply(
+                text="店员说，照片是一个穿灰色雨衣的人留下的。她没进门，只隔着玻璃看了我很久。照片背面还有一道今天才沾上的蓝色颜料。",
+                emotion="alert",
+                gesture="camera-clasp",
+                camera="soft-close",
+                effect="rain-rise",
+                branch="photo-revealed",
+            )
 
         if any(word in normalized for word in ("照片", "相机", "拍到", "胶卷")):
             return SceneReply(
@@ -115,23 +182,31 @@ class CompatibleModel:
     def enabled(self) -> bool:
         return bool(self.url and self.key and self.name)
 
-    def respond(self, message: str, turn: int) -> SceneReply:
+    def respond(
+        self,
+        message: str,
+        turn: int,
+        branch: str = "opening",
+        history: list[dict[str, str]] | None = None,
+    ) -> SceneReply:
         if not self.enabled:
-            return self.fallback.respond(message, turn)
+            return self.fallback.respond(message, turn, branch)
 
         system = (
             "You are Mira, a guarded 26-year-old travel photographer waiting in a closing "
-            "cafe after a storm. Reply in concise Chinese. Return only JSON with keys text, "
+            f"cafe after a storm. Current scene branch: {branch}. Preserve continuity with the "
+            "provided recent dialogue. Reply in concise Chinese. Return only JSON with keys text, "
             "emotion (guarded|alert|relieved), gesture (camera-clasp|window-glance|listen-lean|"
             "shoulders-release), camera (steady|soft-close|window-drift|photo-push|warm-close), "
             "effect (none|flash|rain-rise|rain-ease), branch, media (null|lost-photo)."
         )
+        messages: list[dict[str, str]] = [{"role": "system", "content": system}]
+        messages.extend(history or [])
+        if not messages or messages[-1].get("role") != "user" or messages[-1].get("content") != message:
+            messages.append({"role": "user", "content": message})
         payload = {
             "model": self.name,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": message},
-            ],
+            "messages": messages,
             "temperature": 0.7,
             "response_format": {"type": "json_object"},
         }
@@ -167,11 +242,28 @@ class CompatibleModel:
                 media="lost-photo" if data.get("media") == "lost-photo" else None,
             )
         except (KeyError, ValueError, TimeoutError, urllib.error.URLError):
-            return self.fallback.respond(message, turn)
+            return self.fallback.respond(message, turn, branch)
 
 
 def _allowed(value: Any, choices: set[str], default: str) -> str:
     return value if isinstance(value, str) and value in choices else default
+
+
+def _sanitize_history(value: Any) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+    history: list[dict[str, str]] = []
+    for item in value[-8:]:
+        if not isinstance(item, dict):
+            continue
+        role = item.get("role")
+        content = item.get("content")
+        if role not in {"user", "assistant"} or not isinstance(content, str):
+            continue
+        clean = content.strip()[:500]
+        if clean:
+            history.append({"role": role, "content": clean})
+    return history
 
 
 MODEL = CompatibleModel()
@@ -216,6 +308,8 @@ class DemoHandler(SimpleHTTPRequestHandler):
             message = str(body.get("message", "")).strip()
             request_id = str(body.get("requestId", ""))[:80]
             turn = max(1, int(body.get("turn", 1)))
+            branch = _allowed(body.get("branch"), BRANCHES, "opening")
+            history = _sanitize_history(body.get("history"))
         except (ValueError, json.JSONDecodeError):
             self._json({"error": "invalid_request"}, status=HTTPStatus.BAD_REQUEST)
             return
@@ -230,7 +324,7 @@ class DemoHandler(SimpleHTTPRequestHandler):
             self._json({"error": "provider_unavailable", "requestId": request_id}, status=HTTPStatus.SERVICE_UNAVAILABLE)
             return
 
-        reply = MODEL.respond(message, turn).as_dict()
+        reply = MODEL.respond(message, turn, branch, history).as_dict()
         reply.update({"requestId": request_id, "turn": turn, "provider": "compatible" if MODEL.enabled else "mock"})
         self._json(reply)
 

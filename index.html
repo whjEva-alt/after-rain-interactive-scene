@@ -7,15 +7,19 @@
   <meta name="description" content="雨停之前：一个支持文字、语音、角色表演与可打断响应的实时互动场景。">
   <meta property="og:title" content="雨停之前 | 实时互动场景">
   <meta property="og:description" content="在即将打烊的咖啡馆，与 Mira 完成一段雨夜对话。">
-  <meta property="og:image" content="assets/rain-cafe-v1.png">
+  <meta property="og:image" content="assets/rain-cafe-v1.jpg">
   <title>雨停之前 | After Rain</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%2309100d'/%3E%3Ccircle cx='32' cy='32' r='26' fill='none' stroke='%23ffc95a' stroke-width='2'/%3E%3Ctext x='32' y='38' fill='%23f4f2ea' font-family='Georgia,serif' font-size='18' text-anchor='middle'%3EAR%3C/text%3E%3C/svg%3E">
+  <link rel="preload" as="image" href="assets/rain-cafe-v1.jpg" fetchpriority="high">
+  <link rel="preload" as="image" href="assets/mira-state-sheet-v1.webp">
   <link rel="stylesheet" href="styles.css">
-  <script src="assets/lucide.min.js"></script>
+  <script defer src="assets/lucide.min.js"></script>
+  <script defer src="app.js"></script>
 </head>
 <body>
   <main class="experience" id="experience" data-state="idle" data-emotion="guarded" data-camera="steady">
     <section class="scene" aria-label="暴雨后的咖啡馆">
-      <img class="scene-image" src="assets/rain-cafe-v1.png" alt="雨夜里即将打烊的咖啡馆">
+      <img class="scene-image" src="assets/rain-cafe-v1.jpg" alt="雨夜里即将打烊的咖啡馆" fetchpriority="high" decoding="async">
       <div class="window-rain" aria-hidden="true"></div>
       <div class="scene-light" aria-hidden="true"></div>
       <div class="character-wrap" aria-hidden="true">
@@ -33,7 +37,6 @@
       </div>
       <div class="top-actions">
         <span class="connection" id="connection"><i></i><span>现场在线</span></span>
-        <span class="mode-tag" id="modeTag">MOCK</span>
         <button class="icon-btn" id="soundButton" type="button" aria-label="关闭声音" title="声音">
           <i data-lucide="volume-2"></i>
         </button>
@@ -58,14 +61,14 @@
       </div>
     </section>
 
-    <section class="subtitle" id="subtitle" aria-live="polite" aria-atomic="true">
+    <section class="subtitle" id="subtitle">
       <div class="speaker-row">
-        <span>MIRA</span>
+        <span id="speakerLabel">MIRA</span>
         <div class="voice-bars" id="voiceBars" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
       </div>
       <p id="subtitleText">外面的雨小了些。你也是来躲雨，还是在找人？</p>
-      <button class="interrupt" id="interruptButton" type="button" hidden>
-        <i data-lucide="square"></i><span>打断</span>
+      <button class="interrupt" id="interruptButton" type="button" aria-label="打断角色并开始语音输入" hidden>
+        <i data-lucide="mic"></i><span>打断并说话</span>
       </button>
     </section>
 
@@ -91,7 +94,7 @@
           <span class="sr-only">对 Mira 说</span>
           <input id="messageInput" maxlength="500" autocomplete="off" placeholder="对 Mira 说……">
         </label>
-        <button class="icon-btn send" type="submit" aria-label="发送" title="发送">
+        <button class="icon-btn send" id="sendButton" type="submit" aria-label="发送" title="发送" disabled>
           <i data-lucide="arrow-up"></i>
         </button>
       </form>
@@ -101,15 +104,16 @@
       </div>
     </section>
 
-    <aside class="diagnostics" id="diagnostics" aria-hidden="true">
+    <aside class="diagnostics" id="diagnostics" aria-hidden="true" inert>
       <header>
-        <div><span>RUNTIME</span><h2>现场记录</h2></div>
+        <div><span>RUNTIME · <b id="modeTag">MOCK</b></span><h2>现场记录</h2></div>
         <button class="icon-btn" id="closeLogButton" type="button" aria-label="关闭事件记录"><i data-lucide="x"></i></button>
       </header>
       <dl class="runtime-grid">
         <div><dt>轮次</dt><dd id="turnMetric">0</dd></div>
         <div><dt>首包</dt><dd id="latencyMetric">--</dd></div>
         <div><dt>任务</dt><dd id="taskMetric">IDLE</dd></div>
+        <div><dt>丢弃</dt><dd id="discardMetric">0</dd></div>
       </dl>
       <div class="event-log" id="eventLog" aria-live="polite"></div>
       <div class="diagnostic-actions">
@@ -124,7 +128,7 @@
     </div>
 
     <div class="toast" id="toast" role="status"></div>
+    <div class="sr-only" id="statusAnnouncer" aria-live="polite" aria-atomic="true"></div>
   </main>
-  <script src="app.js"></script>
 </body>
 </html>
